@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+	<head>
+    <title>intro</title>
+    
+	</head>
+	<body>
+    
+   <script type="module">
+
+      import * as THREE from './js/build/three.module.js'
+      import { OrbitControls } from './js/examples/jsm/controls/OrbitControls.js'
+      import { OBJLoader } from './js/examples/jsm/loaders/OBJLoader.js'; 
+      let container;
+
+let camera, scene, renderer, controls;
+let meshFloor, ambientLight, light, lightMesh;
+
+let mouseX = 0, mouseY = 0;
+
+let windowHalfX = window.innerWidth / 2;
+let windowHalfY = window.innerHeight / 2;
+
+let object;
+let dir = 1;
+
+
+function init() {
+
+  container = document.createElement( 'div' );
+  document.body.appendChild( container );
+
+  camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+  camera.position.z = 75;
+
+  // scene
+
+  scene = new THREE.Scene();
+
+  /*const ambientLight = new THREE.AmbientLight( 0xcccccc, 0.4 );
+  scene.add( ambientLight );
+
+  const pointLight = new THREE.PointLight( 0xffffff, 0.8 );
+  camera.add( pointLight );*/
+
+  // LIGHTS
+  ambientLight = new THREE.AmbientLight(0xffffff, 0.2);
+  scene.add(ambientLight);
+  
+  //optimize
+  light = new THREE.PointLight(0xffffff, 0.8, 18);
+	light.position.set(0, 8, -3);
+  light.castShadow = true;
+  
+  //Set up shadow properties for the light
+  light.shadow.mapSize.width = 2048; // default is 512
+	light.shadow.mapSize.height = 2048; // default is 512
+	light.shadow.camera.near = 0.1; // default
+	light.shadow.camera.far = 1000; // default
+
+  scene.add(light);
+
+  lightMesh = new THREE.Mesh(
+			new THREE.SphereGeometry(0.25),
+			new THREE.MeshBasicMaterial({ color: 0xffffff })
+		);
+
+	lightMesh.position.set(0, 8, -3);
+  scene.add(lightMesh);
+    
+  scene.add( camera );
+
+  // manager
+
+  function loadModel() {
+
+    object.traverse( function ( child ) {
+
+      if ( child.isMesh ) child.material.map = texture;
+
+    } );
+
+    object.position.y = 0.75;
+    scene.add( object );
+
+  }
+
+  const manager = new THREE.LoadingManager( loadModel );
+
+  manager.onProgress = function ( item, loaded, total ) {
+
+    console.log( item, loaded, total );
+
+  };
+
+  // texture
+
+  const textureLoader = new THREE.TextureLoader( manager );
+  const texture = textureLoader.load( 'sphere.jpg' );
+
+  // model
+
+  function onProgress( xhr ) {
+
+    if ( xhr.lengthComputable ) {
+
+      const percentComplete = xhr.loaded / xhr.total * 100;
+      console.log( 'model ' + Math.round( percentComplete, 2 ) + '% downloaded' );
+
+    }
+
+  }
+
+  function onError() {}
+
+  const loader = new OBJLoader( manager );
+  loader.load( 'objs/sphere.obj', function ( obj ) {
+
+    object = obj;
+
+  }, onProgress, onError );
+
+  //
+
+  renderer = new THREE.WebGLRenderer();
+  renderer.setPixelRatio( window.devicePixelRatio );
+  renderer.setSize( window.innerWidth, window.innerHeight );
+  // Enable Shadows in the Renderer
+  renderer.shadowMap.enabled = true;
+	//renderer.shadowMap.type = THREE.BasicShadowMap;
+	renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  
+  container.appendChild( renderer.domElement );
+  const canvas = renderer.domElement;
+	document.body.appendChild(canvas);
+
+  controls = new OrbitControls(camera, canvas);
+
+  const texture2 = textureLoader.load('court.jpg');
+  const court = new THREE.MeshPhongMaterial({ map: texture2 });
+
+  let mesh = new THREE.Mesh(
+	new THREE.MeshPhongMaterial({ color: 0xffffff })
+  );
+  
+	// The cube can have shadows cast onto it, and it can cast shadows
+	mesh.receiveShadow = true;
+	mesh.castShadow = true;
+		
+
+	meshFloor = new THREE.Mesh(
+	new THREE.PlaneGeometry(30, 20, 20, 20),
+  court
+  );
+
+  //Possibly important??
+  meshFloor.rotation.x -= Math.PI / 2;
+	// Floor can have shadows cast onto it
+	meshFloor.receiveShadow = true;
+	scene.add(meshFloor);
+
+}
+
+function onWindowResize() {
+
+  windowHalfX = window.innerWidth / 2;
+  windowHalfY = window.innerHeight / 2;
+
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+
+  renderer.setSize( window.innerWidth, window.innerHeight );
+
+}
+
+function onDocumentMouseMove( event ) {
+
+  mouseX = ( event.clientX - windowHalfX ) / 2;
+  mouseY = ( event.clientY - windowHalfY ) / 2;
+
+}
+
+
+const clock = new THREE.Clock();
+let time;
+let delta;
+const scale = 0.001;
+let balldir = 1;
+
+function animate() {
+
+  requestAnimationFrame( animate );
+  if (light.position.x > 4 || light.position.x < -4) {
+			dir *= -1; //flip direction
+		}
+	light.position.x += 0.01 * dir;
+  lightMesh.position.x += 0.01 * dir;
+  
+  if(object.position.y > 4.75 || object.position.y < 0.75) {
+    balldir *= -1;
+  }
+
+  object.position.y += 0.04 * balldir;
+  object.rotation.x += ((Math.random() * 0.05) + 0.005);
+  object.rotation.y += ((Math.random() * 0.05) + 0.005);
+  /*delta = clock.getDelta();
+  time += delta;
+  object.rotation.x = (time * 4) * scale;
+  object.position.y = (0.5 + Math.abs(Math.sin(time * 3)) * 2) * scale;
+  object.position.z = (Math.cos(time) * 4) * scale;*/
+
+  //object.position.x += 0.1;
+  render();
+
+}
+
+function render() {
+
+  /*requestAnimationFrame(render);
+  delta = clock.getDelta();
+  time += delta;
+  object.rotation.x = (time * 4) * scale;
+  object.position.y = (0.5 + Math.abs(Math.sin(time * 3)) * 2) * scale;
+  object.position.z = (Math.cos(time) * 4) * scale;*/
+
+  //camera.position.x += ( mouseX - camera.position.x ) * .05;
+  //camera.position.y += ( - mouseY - camera.position.y ) * .05;
+
+  //camera.lookAt( scene.position );
+
+  controls.update();
+  renderer.render( scene, camera );
+
+}
+  
+init();
+animate();
+      
+      
+		</script>
+	</body>
+</html>
